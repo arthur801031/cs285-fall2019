@@ -26,14 +26,14 @@ class BC_Trainer(object):
             }
 
         self.params = params
-        self.params['agent_class'] = BCAgent ## TODO: look in here and implement this
+        self.params['agent_class'] = BCAgent ## DoneTODO: look in here and implement this
         self.params['agent_params'] = agent_params
 
         ################
         ## RL TRAINER
         ################
 
-        self.rl_trainer = RL_Trainer(self.params) ## TODO: look in here and implement this
+        self.rl_trainer = RL_Trainer(self.params) ## DoneTODO: look in here and implement this
 
         #######################
         ## LOAD EXPERT POLICY
@@ -68,7 +68,7 @@ def main():
     parser.add_argument('--num_agent_train_steps_per_iter', type=int, default=10000)  # number of gradient steps for training policy (per iter in n_iter)
     parser.add_argument('--n_iter', '-n', type=int, default=1)
 
-    parser.add_argument('--batch_size', type=int, default=1000)  # training data collected (in the env) during each iteration
+    parser.add_argument('--batch_size', type=int, default=100000)  # training data collected (in the env) during each iteration
     parser.add_argument('--eval_batch_size', type=int,
                         default=10000)  # eval data collected (in the env) for logging metrics
     parser.add_argument('--train_batch_size', type=int,

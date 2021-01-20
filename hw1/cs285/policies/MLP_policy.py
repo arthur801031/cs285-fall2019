@@ -22,13 +22,24 @@ class MLPPolicy(nn.Module):
         self.device = device
 
         # network architecture
-        #TODO -build the network architecture
+        #DoneTODO -build the network architecture
         #HINT -build an nn.Modulelist() using the passed in parameters
+
+        self.mlp = nn.ModuleList()
+        for i in range(n_layers):
+            if i == 0:
+                self.mlp.append(nn.Linear(ob_dim, size))#first hidden layer
+                self.mlp.append(nn.Tanh())
+            elif i + 1 == n_layers:
+                self.mlp.append(nn.Linear(size, ac_dim))
+            else:
+                self.mlp.append(nn.Linear(size, size))
+                self.mlp.append(nn.Tanh())
 
         #loss and optimizer
         if self.training:
-            # TODO define the loss that will be used to train this policy
-            self.loss_func = TODO
+            # DoneTODO define the loss that will be used to train this policy
+            self.loss_func = nn.MSELoss()
             self.optimizer = torch.optim.Adam(self.parameters(), lr)
 
         self.to(device)
@@ -57,8 +68,8 @@ class MLPPolicy(nn.Module):
         else:
             observation = obs[None]
 
-        # TODO return the action that the policy prescribes
-        return TODO
+        # DoneTODO return the action that the policy prescribes
+        return self.forward(torch.Tensor(observation).to(self.device)).cpu().detach().numpy()
 
     # update/train this policy
     def update(self, observations, actions):
@@ -78,5 +89,10 @@ class MLPPolicySL(MLPPolicy):
     def update(self, observations, actions):
         assert self.training, 'Policy must be created with training = true in order to perform training updates...'
 
-        # TODO define network update
+        # DoneTODO define network update
         #HINT - you need to calculate the prediction loss and then use optimizer.step()
+        self.optimizer.zero_grad()
+        predicted_actions = self(torch.Tensor(observations).to(self.device))
+        loss = self.loss_func(predicted_actions, torch.Tensor(actions).to(self.device))
+        loss.backward()
+        self.optimizer.step()
