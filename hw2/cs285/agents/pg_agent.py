@@ -66,9 +66,9 @@ class PGAgent:
         advantage_values = self.estimate_advantage(obs, q_values)
 
         # step 3:
-        # TODO: pass the calculated values above into the actor/policy's update,
+        # DoneTODO: pass the calculated values above into the actor/policy's update,
         # which will perform the actual PG update step3
-        loss = self.actor.update(obs, acs, qvals = TODO, adv_n = TODO)
+        loss = self.actor.update(obs, acs, qvals = q_values, adv_n = advantage_values)
         return loss
 
     def calculate_q_vals(self, rews_list):
@@ -91,20 +91,20 @@ class PGAgent:
         # Case 1: trajectory-based PG
         if not self.reward_to_go:
 
-            # TODO: Estimate the Q value Q^{pi}(s_t, a_t) using rewards from that entire trajectory
+            # DoneTODO: Estimate the Q value Q^{pi}(s_t, a_t) using rewards from that entire trajectory
             # HINT1: value of each point (t) = total discounted reward summed over the entire trajectory (from 0 to T-1)
                 # In other words, q(s_t, a_t) = sum_{t'=0}^{T-1} gamma^t' r_{t'}
             # Hint3: see the helper functions at the bottom of this file
-            q_values = np.concatenate([TODO for r in rews_list])
+            q_values = np.concatenate([self._discounted_return(r) for r in rews_list])
 
         # Case 2: reward-to-go PG.
         else:
 
-            # TODO: Estimate the Q value Q^{pi}(s_t, a_t) as the reward-to-go
+            # DoneTODO: Estimate the Q value Q^{pi}(s_t, a_t) as the reward-to-go
             # HINT1: value of each point (t) = total discounted reward summed over the remainder of that trajectory (from t to T-1)
                 # In other words, q(s_t, a_t) = sum_{t'=t}^{T-1} gamma^(t'-t) * r_{t'}
             # Hint3: see the helper functions at the bottom of this file
-            q_values = np.concatenate([TODO for r in rews_list])
+            q_values = np.concatenate([self._discounted_cumsum(r) for r in rews_list])
 
         return q_values
 
@@ -147,7 +147,7 @@ class PGAgent:
     ################## HELPER FUNCTIONS #################
     #####################################################
 
-    # TODO: implement this function
+    # DoneTODO: implement this function
     def _discounted_return(self, rewards):
         """
             Helper function
@@ -156,21 +156,20 @@ class PGAgent:
                 note that all entries of this output are equivalent
                 because each index t is a sum from 0 to T-1 (and doesnt involve t)
         """
-
         # 1) create a list of indices (t'): from 0 to T-1
-        indices = TODO
+        indices = [i for i in range(len(rewards))]
 
         # 2) create a list where the entry at each index (t') is gamma^(t')
-        discounts = TODO
+        discounts = [pow(self.gamma, t) for t in indices]
 
         # 3) create a list where the entry at each index (t') is gamma^(t') * r_{t'}
-        discounted_rewards = TODO
+        discounted_rewards = [discounts[i] * rewards[i] for i in indices]
 
         # 4) calculate a scalar: sum_{t'=0}^{T-1} gamma^(t') * r_{t'}
-        sum_of_discounted_rewards = TODO
+        sum_of_discounted_rewards = sum(discounted_rewards)
 
         # 5) create a list of length T-1, where each entry t contains that scalar
-        list_of_discounted_returns = TODO
+        list_of_discounted_returns = [sum_of_discounted_rewards for i in indices]
 
         return list_of_discounted_returns
 
@@ -190,17 +189,17 @@ class PGAgent:
         for start_time_index in range(len(rewards)):
 
             # 1) create a list of indices (t'): goes from t to T-1
-            indices = TODO
+            indices = [i for i in range(start_time_index, len(rewards))]
 
             # 2) create a list where the entry at each index (t') is gamma^(t'-t)
-            discounts = TODO
+            discounts = np.array([pow(self.gamma, t_prime - start_time_index) for t_prime in indices])
 
             # 3) create a list where the entry at each index (t') is gamma^(t'-t) * r_{t'}
             # Hint: remember that t' goes from t to T-1, so you should use the rewards from those indices as well
-            discounted_rtg = TODO
+            discounted_rtg = discounts * rewards[indices]
 
             # 4) calculate a scalar: sum_{t'=t}^{T-1} gamma^(t'-t) * r_{t'}
-            sum_discounted_rtg = TODO
+            sum_discounted_rtg = np.sum(discounted_rtg)
 
             # appending each of these calculated sums into the list to return
             all_discounted_cumsums.append(sum_discounted_rtg)
