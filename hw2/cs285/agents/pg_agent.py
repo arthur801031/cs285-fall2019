@@ -63,7 +63,7 @@ class PGAgent:
         q_values = self.calculate_q_vals(rews_list)
 
         # step 2: calculate advantages that correspond to each (s_t, a_t) point
-        advantage_values = self.estimate_advantage(obs, q_values)
+        advantage_values = self.estimate_advantage(obs, q_values, rews_list)
 
         # step 3:
         # DoneTODO: pass the calculated values above into the actor/policy's update,
@@ -108,21 +108,21 @@ class PGAgent:
 
         return q_values
 
-    def estimate_advantage(self, obs, q_values):
+    def estimate_advantage(self, obs, q_values, rewards):
 
         """
             Computes advantages by (possibly) subtracting a baseline from the estimated Q values
         """
 
-        # TODO: Estimate the advantage when nn_baseline is True
+        # DoneTODO: Estimate the advantage when nn_baseline is True
         # HINT1: pass obs into the neural network that you're using to learn the baseline
             # extra hint if you're stuck: see your actor's run_baseline_prediction
         # HINT2: advantage should be [Q-b]
         if self.nn_baseline:
             with torch.no_grad():
-                b_n_unnormalized = TODO
+                b_n_unnormalized = self.actor.get_baseline(obs)
                 b_n = b_n_unnormalized * np.std(q_values) + np.mean(q_values)
-                adv_n = TODO
+                adv_n = q_values - b_n
 
         # Else, just set the advantage to [Q]
         else:

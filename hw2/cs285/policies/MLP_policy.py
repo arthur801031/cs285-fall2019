@@ -40,6 +40,7 @@ class MLP(nn.Module):
         if self.discrete:
             return x
         else:
+            # if it's continuous, we are returning (mean, std)
             return (x, self.logstd.exp())
 
 class MLPPolicy:
@@ -87,7 +88,8 @@ class MLPPolicy:
             action_probs = nn.functional.log_softmax(output).exp()
             return torch.multinomial(action_probs, num_samples = 1).cpu().detach().numpy()[0]
         else:
-            breakpoint()
+            # returns a tensor of random numbers drawn from separate normal distributions whose mean and standard deviation are given.
+            # output[0] is mean and output[1] is std.
             return torch.normal(output[0], output[1]).cpu().detach().numpy()
 
     def get_log_prob(self, network_outputs, actions_taken):
@@ -100,6 +102,9 @@ class MLPPolicy:
             #log probability under a multivariate gaussian
             return torch.distributions.Normal(network_outputs[0], network_outputs[1]).log_prob(actions_taken).sum(-1)
 
+    def get_baseline(self, obs):
+        baseline_prediction = self.baseline_mlp(torch.Tensor(obs).to(self.device)).view(-1).cpu().detach().numpy()
+        return baseline_prediction
 #####################################################
 #####################################################
 
@@ -126,12 +131,15 @@ class MLPPolicyPG(MLPPolicy):
 
         if self.nn_baseline:
             baseline_prediction = self.baseline_mlp(torch.Tensor(observations).to(self.device)).view(-1)
+            # rescale target values for the baseline to have a mean of zero and a std of 1. Formula: (x_i - mean) / std.
             baseline_target = torch.Tensor((qvals - qvals.mean()) / (qvals.std() + 1e-8)).to(self.device)
 
-            # TODO: define the loss that should be optimized for training the baseline
+            # DoneTODO: define the loss that should be optimized for training the baseline
             # HINT1: use nn.functional.mse_loss, similar to SL loss from hw1
             # HINT2: we want predictions (baseline_prediction) to be as close as possible to the labels (baseline_target)
             # HINT3: Don't forget to propagate the loss backward
+            loss = nn.functional.mse_loss(baseline_prediction, baseline_target)
+            loss.backward()
 
         #step the optimizer
         self.optimizer.step()
