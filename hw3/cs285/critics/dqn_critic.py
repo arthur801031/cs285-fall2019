@@ -35,6 +35,7 @@ class DQNCritic:
         self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, self.optimizer_spec.lr_schedule)
 
     def get_loss(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
+        # ob torch.Size([32, 84, 84, 4])
         ob, ac, rew, next_ob, done = map(lambda x: torch.from_numpy(x).to(self.device), [ob_no, ac_na, re_n, next_ob_no, terminal_n])
 
         with torch.no_grad():
@@ -43,18 +44,19 @@ class DQNCritic:
                 # In double Q-learning, the best action is selected using the Q-network that
                 # is being updated, but the Q-value for this action is obtained from the
                 # target Q-network. See page 5 of https://arxiv.org/pdf/1509.06461.pdf for more details.
-                max_ac = TODO
+                max_ac = self.Q_func(next_ob).argmax(-1, True)
             else:
-                max_ac = TODO
-
+                max_ac = self.target_Q_func(next_ob).argmax(-1, True)
+        # ac is size [32] (32 columns 1 row). After ac.view(-1, 1), it becomes [32, 1] (32 rows 1 column)
+        # current Q function is based on the available states and taking actions (ac)
         curr_Q = self.Q_func(ob).gather(-1, ac.long().view(-1, 1)).squeeze()
-        # TODO calculate the optimal Qs for next_ob using max_ac
+        # DoneTODO calculate the optimal Qs for next_ob using max_ac
         # HINT1: similar to how it is done above
-        best_next_Q = TODO
-        # TODO calculate the targets for the Bellman error
+        best_next_Q = self.target_Q_func(next_ob).gather(-1, max_ac).squeeze()
+        # DoneTODO calculate the targets for the Bellman error
         # HINT1: as you saw in lecture, this would be:
             #currentReward + self.gamma * best_next_Q * (1 - self.done_mask_ph)
-        calc_Q = TODO
+        calc_Q = rew + (self.gamma * best_next_Q * (1 - done))
 
         return nn.functional.smooth_l1_loss(curr_Q, calc_Q) #Huber Loss
 

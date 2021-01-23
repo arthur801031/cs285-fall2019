@@ -16,8 +16,8 @@ class BootstrappedContinuousCritic:
         self.gamma = hparams['gamma']
 
         self.value_func = MLP(1, self.ob_dim, self.n_layers, self.size, self.device, self.discrete)
-        # TODO: use the Adam optimizer to optimize the loss with self.learning_rate
-        self.optimizer = TODO
+        # DoneTODO: use the Adam optimizer to optimize the loss with self.learning_rate
+        self.optimizer = torch.optim.Adam(self.value_func.parameters(), lr=self.learning_rate)
 
     def update(self, ob_no, next_ob_no, re_n, terminal_n):
         """
@@ -38,7 +38,7 @@ class BootstrappedContinuousCritic:
                 loss
         """
 
-        # TODO: Implement the pseudocode below:
+        # DoneTODO: Implement the pseudocode below:
 
         # do the following (self.num_grad_steps_per_target_update * self.num_target_updates) times:
             # every self.num_grad_steps_per_target_update steps (which includes the first step),
@@ -50,6 +50,19 @@ class BootstrappedContinuousCritic:
                 # update this critic using the observations and targets
                 # HINT: use nn.MSE()
 
-        TODO
+        ob, next_ob, rew, done = map(lambda x: torch.from_numpy(x).to(self.device), [ob_no, next_ob_no, re_n, terminal_n])
+
+        iters = self.num_grad_steps_per_target_update * self.num_target_updates
+        for i in range(iters):
+            if i % self.num_grad_steps_per_target_update == 0:
+                v_s_prime = self.value_func(next_ob).squeeze()
+                v_s_prime[done >= 1] = 0
+                target_vals = rew + self.gamma * v_s_prime
+
+            self.optimizer.zero_grad()
+            loss = nn.functional.mse_loss(self.value_func(ob).squeeze(), target_vals)
+            loss.backward()
+            self.optimizer.step()
+            target_vals.detach_()
 
         return loss

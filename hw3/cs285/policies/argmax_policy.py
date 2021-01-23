@@ -7,9 +7,10 @@ class ArgMaxPolicy:
         self.device = device
 
     def get_action(self, obs):
+        # obs torch.Size([1, 84, 84, 4])
         if len(obs.shape) > 1:
             observation = torch.tensor(obs).to(self.device)
         else:
             observation = torch.tensor(obs[None]).to(self.device)
-        # TODO: pass observation to critic and use argmax of the resulting Q values as the action
-        return TODO
+        # DoneTODO: pass observation to critic and use argmax of the resulting Q values as the action
+        return self.critic.Q_func(observation).squeeze().argmax().item()
