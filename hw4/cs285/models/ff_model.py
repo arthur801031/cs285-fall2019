@@ -8,16 +8,17 @@ class FFModel:
         # init vars
         self.device = device
 
-        #TODO - specify ouput dim and input dim of delta func MLP
-        self.delta_func = MLP(input_dim = TODO,
-                              output_dim = TODO,
+        #DoneTODO - specify ouput dim and input dim of delta func MLP
+        # input_dim is ob_dim + ac_dim because we want to account for transition probabilities, which is f_theta(st. at)
+        self.delta_func = MLP(input_dim = ob_dim + ac_dim,
+                              output_dim = ob_dim,
                               n_layers = n_layers,
                               size = size,
                               device = self.device,
                               discrete = True)
 
-        #TODO - define the delta func optimizer. Adam optimizer will work well.
-        self.optimizer = TODO
+        #DoneTODO - define the delta func optimizer. Adam optimizer will work well.
+        self.optimizer = torch.optim.Adam(self.delta_func.parameters(), lr=learning_rate)
 
     #############################
 
@@ -26,29 +27,29 @@ class FFModel:
             obs = np.squeeze(obs)[None]
             acs = np.squeeze(acs)[None]
 
-        # TODO(Q1) normalize the obs and acs above using the normalize function and data_statistics
-        norm_obs = TODO
-        norm_acs = TODO
+        # DoneTODO(Q1) normalize the obs and acs above using the normalize function and data_statistics
+        norm_obs = normalize(obs, data_statistics['obs_mean'], data_statistics['obs_std'])
+        norm_acs = normalize(acs, data_statistics['acs_mean'], data_statistics['acs_std'])
 
         norm_input = torch.Tensor(np.concatenate((norm_obs, norm_acs), axis = 1)).to(self.device)
         norm_delta = self.delta_func(norm_input).cpu().detach().numpy()
 
-        # TODO(Q1) Unnormalize the the norm_delta above using the unnormalize function and data_statistics
-        delta = TODO
-        # TODO(Q1) Return the predited next observation (You will use obs and delta)
-        return TODO
+        # DoneTODO(Q1) Unnormalize the the norm_delta above using the unnormalize function and data_statistics
+        delta = unnormalize(norm_delta, data_statistics['delta_mean'], data_statistics['delta_std'])
+        # DoneTODO(Q1) Return the predited next observation (You will use obs and delta)
+        return obs + delta
 
     def update(self, observations, actions, next_observations, data_statistics):
-        # TODO(Q1) normalize the obs and acs above using the normalize function and data_statistics (same as above)
-        norm_obs = TODO
-        norm_acs = TODO
+        # DoneTODO(Q1) normalize the obs and acs above using the normalize function and data_statistics (same as above)
+        norm_obs = normalize(np.squeeze(observations), data_statistics['obs_mean'], data_statistics['obs_std'])
+        norm_acs = normalize(np.squeeze(actions), data_statistics['acs_mean'], data_statistics['acs_std'])
 
         pred_delta = self.delta_func(torch.Tensor(np.concatenate((norm_obs, norm_acs), axis = 1)).to(self.device))
-        # TODO(Q1) Define a normalized true_delta using observations, next_observations and the delta stats from data_statistics
-        true_delta = TODO
+        # DoneTODO(Q1) Define a normalized true_delta using observations, next_observations and the delta stats from data_statistics
+        true_delta = torch.Tensor(normalize(next_observations - observations, data_statistics['delta_mean'], data_statistics['delta_std'])).to(self.device)
 
-        # TODO(Q1) Define a loss function that takes as input normalized versions of predicted change in state and true change in state
-        loss = TODO
+        # DoneTODO(Q1) Define a loss function that takes as input normalized versions of predicted change in state and true change in state
+        loss = nn.functional.mse_loss(true_delta, pred_delta)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
