@@ -142,7 +142,7 @@ class PointMass(Env):
 
 
 if __name__ == "__main__":
-    logdir = 'pm_debug'
+    logdir = '../results'
     os.mkdir(logdir)
     num_episodes = 10
     num_steps_per_epoch = 20

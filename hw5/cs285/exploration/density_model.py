@@ -24,7 +24,8 @@ class Histogram:
                 2. increment self.total by "increment"
         """
         bin_name = self.preprocessor(state)
-        raise NotImplementedError
+        self.hist[bin_name] += increment
+        self.total += increment
 
     def get_count(self, states):
         """
@@ -39,8 +40,11 @@ class Histogram:
                     1. get the bin_name using self.preprocessor
                     2. get the value of self.hist with key bin_name
         """
-        raise NotImplementedError
-        return counts
+        counts = []
+        for state in states:
+            bin_name = self.preprocessor(state)
+            counts.append(self.hist[bin_name])
+        return np.array(counts)
 
     def get_prob(self, states):
         """
@@ -54,7 +58,7 @@ class Histogram:
             NOTE:
                 remember to normalize by float(self.total)
         """
-        raise NotImplementedError
+        probs = self.get_count(states) / self.total
         return probs
 
 class RBF:
@@ -78,8 +82,7 @@ class RBF:
                 self.means: np array (B, ob_dim)
         """
         B, ob_dim = len(data), len(data[0])
-        raise NotImplementedError
-        self.means = None
+        self.means = np.array(data)
         assert self.means.shape == (B, ob_dim)
 
     def get_prob(self, states):
@@ -115,19 +118,19 @@ class RBF:
             assert states.ndim == self.means.ndim and ob_dim == replay_dim
 
             # 1. Compute deltas
-            deltas = raise NotImplementedError
+            deltas = np.array([state - self.means for state in states])
             assert deltas.shape == (b, B, ob_dim)
 
             # 2. Euclidean distance
-            euc_dists = raise NotImplementedError
+            euc_dists = np.sum(np.square(deltas), axis=2)
             assert euc_dists.shape == (b, B)
 
             # Gaussian
-            gaussians = raise NotImplementedError
+            gaussians = np.exp(-euc_dists / (2 * self.sigma ** 2))
             assert gaussians.shape == (b, B)
 
             # 4. Average
-            densities = raise NotImplementedError
+            densities = np.mean(gaussians, axis = 1)
             assert densities.shape == (b,)
 
             return densities
@@ -147,22 +150,22 @@ class Exemplar(nn.Module):
             HINT: there should be self.hid_dim latent variables, half from each encoder
         '''
 
-        self.encoder1 = MLP(input_dim = None,
-                            output_dim = None,
+        self.encoder1 = MLP(input_dim = self.ob_dim,
+                            output_dim = self.hid_dim // 2,
                             n_layers = 2,
                             size = self.hid_dim,
                             device = self.device,
                             discrete = False)
 
-        self.encoder2 = MLP(input_dim = None,
-                            output_dim = None,
+        self.encoder2 = MLP(input_dim = self.ob_dim,
+                            output_dim = self.hid_dim // 2,
                             n_layers = 2,
                             size = self.hid_dim,
                             device = self.device,
                             discrete = False)
 
-        self.discriminator = MLP(input_dim = None,
-                                output_dim = None,
+        self.discriminator = MLP(input_dim = self.hid_dim,
+                                output_dim = 1, # output 1 if s = s' and 0 if s != s'
                                 n_layers = 2,
                                 size = self.hid_dim,
                                 device = self.device,
@@ -175,8 +178,8 @@ class Exemplar(nn.Module):
             HINT1: Use torch.eye for the covariance matrix (Diagonal of covariance matrix are the variances)
             HINT2: Don't forget to add both to the correct device
         '''
-        prior_means = None
-        prior_cov = None
+        prior_means = torch.zeros(self.hid_dim // 2).to(self.device)
+        prior_cov = torch.eye(self.hid_dim // 2).to(self.device)
         self.prior = torch.distributions.MultivariateNormal(prior_means, prior_cov)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr = self.learning_rate)
@@ -186,12 +189,12 @@ class Exemplar(nn.Module):
         encoded2_mean, encoded2_std = self.encoder2(torch.Tensor(state2).to(self.device))
 
         # sample epsilon1 and epsilon2 from the prior (don't forget to add then to self.device)
-        epsilon1 = None
-        epsilon2 = None
+        epsilon1 = self.prior.sample().to(self.device)
+        epsilon2 = self.prior.sample().to(self.device)
 
         #Do the reparameterization trick using the mean, std, and epsilon from above for each encoder output
-        latent1 = None
-        latent2 = None
+        latent1 = encoded1_mean + (encoded1_std * epsilon1)
+        latent2 = encoded2_mean + (encoded2_std * epsilon2)
 
         logit = self.discriminator(torch.cat([latent1, latent2], axis = 1)).squeeze()
         return logit
@@ -214,9 +217,9 @@ class Exemplar(nn.Module):
             Hint:
                 what should be the value of self.discrim_target?
         """
-        logit = None
-        discriminator_dist = None
-        log_likelihood = None
+        logit = self.forward(state1, state2)
+        discriminator_dist = torch.distributions.bernoulli.Bernoulli(logit)
+        log_likelihood = discriminator_dist.log_prob(torch.Tensor(target).to(self.device).squeeze())
         return log_likelihood
 
     def update(self, state1, state2, target):
@@ -246,15 +249,15 @@ class Exemplar(nn.Module):
         Use torch.distributions.MultivariateNormal to define the distributions for each part of the latent space
         HINT: the std must be made into a convariance matrix using torch.diag() (Don't forget to square std to get variance!)
         '''
-        encoded1_dist = None
-        encoded2_dist = None
+        encoded1_dist = torch.distributions.MultivariateNormal(encoded1_mean, torch.diag(encoded1_std ** 2))
+        encoded2_dist = torch.distributions.MultivariateNormal(encoded2_mean, torch.diag(encoded2_std ** 2))
 
         '''
         kl: shape: (batch_size): calculate kl1 and kl2 using torch.distributions.kl.kl_divergence
             to find kl divergence between each encoded_dist and self.prior
         '''
-        kl1 = None
-        kl2 = None
+        kl1 = torch.distributions.kl.kl_divergence(encoded1_dist, self.prior)
+        kl2 = torch.distributions.kl.kl_divergence(encoded2_dist, self.prior)
         kl = (kl1 + kl2)
 
         '''
@@ -264,7 +267,9 @@ class Exemplar(nn.Module):
         elbo = (log_likelihood - (kl * self.kl_weight)).mean()
 
         #Use the optimizer to minimize -elbo (Note the negative sign!)
-        raise NotImplementedError
+        self.optimizer.zero_grad()
+        (-elbo).backward()
+        self.optimizer.step()
 
         #map ll, kl, elbo to numpy arrays for logging
         ll, kl, elbo = map(lambda x: x.cpu().detach().numpy(), (log_likelihood, kl, elbo))
@@ -285,9 +290,9 @@ class Exemplar(nn.Module):
                     compute the probability density of x from the discriminator
                     likelihood (see homework doc)
         """
-        likelihood = None
+        likelihood = self.forward(state, state).cpu().detach().numpy()
 
         # avoid divide by 0 and log(0)
         likelihood = np.clip(np.squeeze(likelihood), 1e-5, 1-1e-5)
-        prob = None
+        prob = (1 - likelihood) / likelihood
         return prob
